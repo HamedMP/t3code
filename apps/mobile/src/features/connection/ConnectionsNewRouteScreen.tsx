@@ -4,7 +4,11 @@ import { StackActions, useNavigation, type StaticScreenProps } from "@react-navi
 import { AsyncResult } from "effect/unstable/reactivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, View } from "react-native";
-import { MATRIX_OS_CONNECT_URL } from "@t3tools/shared/matrixOsConnect";
+import {
+  MATRIX_OS_CONNECT_URL,
+  MATRIX_OS_SETUP_DESCRIPTION,
+  MATRIX_OS_SETUP_MOBILE_ACTION_LABEL,
+} from "@t3tools/shared/matrixOsConnect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColor } from "../../lib/useThemeColor";
 
@@ -287,13 +291,12 @@ export function ConnectionsNewRouteScreen({
               <View collapsable={false} className="gap-1.5">
                 <Text className="text-base font-t3-bold text-foreground">Matrix OS</Text>
                 <Text className="text-sm leading-normal text-foreground-muted">
-                  Set up a persistent T3 environment on your Matrix OS computer, then access it from
-                  this app through T3 Connect.
+                  {MATRIX_OS_SETUP_DESCRIPTION}
                 </Text>
               </View>
               <ConnectionSheetButton
                 icon="safari"
-                label={isOpeningMatrixOs ? "Opening..." : "Connect Matrix OS"}
+                label={isOpeningMatrixOs ? "Opening..." : MATRIX_OS_SETUP_MOBILE_ACTION_LABEL}
                 disabled={isOpeningMatrixOs}
                 tone="secondary"
                 onPress={() => {
