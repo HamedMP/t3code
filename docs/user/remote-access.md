@@ -88,8 +88,9 @@ If your remote machine runs Matrix OS, choose **Settings** → **Connections** �
 the desktop or web client, or **Add Environment** → **Connect Matrix OS** on mobile. T3 Code opens
 the Matrix OS Terminal with the official, pinned T3 Connect setup ready to run. Review and confirm
 the command in Matrix OS, sign in to T3 when prompted, and accept the background-service setup to
-keep the environment reachable after you leave Matrix OS. The handoff URL contains no Matrix or T3
-credential; each product keeps using its own sign-in flow.
+keep the environment reachable after you leave Matrix OS. When you return to T3 Code, it refreshes
+the T3 Connect environment list so the Matrix OS computer is ready to connect. The handoff URL
+contains no Matrix or T3 credential; each product keeps using its own sign-in flow.
 
 Run the server with `t3 serve`.
 
