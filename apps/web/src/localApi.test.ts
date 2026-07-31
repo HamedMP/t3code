@@ -77,6 +77,18 @@ describe("LocalApi", () => {
     expect(showContextMenuFallbackMock).toHaveBeenCalledWith(items, { x: 4, y: 5 });
   });
 
+  it("rejects external links when the browser blocks the popup", async () => {
+    Object.defineProperty(testWindow(), "open", {
+      configurable: true,
+      value: vi.fn(() => null),
+    });
+    const { createLocalApi } = await import("./localApi");
+
+    await expect(
+      createLocalApi().shell.openExternal("https://app.matrix-os.com/?launch=__terminal__"),
+    ).rejects.toThrow("Unable to open link.");
+  });
+
   it("delegates host capabilities and persistence to the desktop bridge", async () => {
     const showContextMenu = vi.fn().mockResolvedValue("delete");
     const pickFolder = vi.fn().mockResolvedValue("/tmp/project");

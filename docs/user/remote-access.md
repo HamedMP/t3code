@@ -84,6 +84,13 @@ For `https://app.t3.codes`, prefer an HTTPS Tailnet or other HTTPS endpoint. A p
 
 Use this when you want to run the server without a GUI, for example on a remote machine over SSH.
 
+If your remote machine runs Matrix OS, choose **Settings** → **Connections** → **Matrix OS** in
+the desktop or web client, or **Add Environment** → **Connect Matrix OS** on mobile. T3 Code opens
+the Matrix OS Terminal with the official, pinned T3 Connect setup ready to run. Review and confirm
+the command in Matrix OS, sign in to T3 when prompted, and accept the background-service setup to
+keep the environment reachable after you leave Matrix OS. The handoff URL contains no Matrix or T3
+credential; each product keeps using its own sign-in flow.
+
 Run the server with `t3 serve`.
 
 ```bash

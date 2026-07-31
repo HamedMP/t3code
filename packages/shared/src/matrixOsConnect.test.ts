@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vite-plus/test";
+
+import { MATRIX_OS_CONNECT_URL } from "./matrixOsConnect.js";
+
+describe("MATRIX_OS_CONNECT_URL", () => {
+  it("targets the canonical Matrix OS Terminal with the fixed T3 action", () => {
+    const url = new URL(MATRIX_OS_CONNECT_URL);
+
+    expect(url.origin).toBe("https://app.matrix-os.com");
+    expect(url.pathname).toBe("/");
+    expect(url.searchParams.get("launch")).toBe("__terminal__");
+    expect(url.searchParams.get("terminal_action")).toBe("t3-connect");
+    expect(new Set(url.searchParams.keys())).toEqual(new Set(["launch", "terminal_action"]));
+  });
+});
