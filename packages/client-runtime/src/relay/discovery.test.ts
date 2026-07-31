@@ -375,6 +375,33 @@ describe("RelayEnvironmentDiscovery", () => {
     }),
   );
 
+  it.effect("refreshes discovered environments when the application becomes active", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      yield* Effect.gen(function* () {
+        const discovery = yield* RelayEnvironmentDiscovery.RelayEnvironmentDiscovery;
+        // Let the scoped connectivity and wakeup subscriptions consume their
+        // initial values before the explicit first refresh.
+        yield* Effect.yieldNow;
+        const requests = yield* Ref.get(harness.statusRequests);
+        for (const environment of environments) {
+          yield* Deferred.succeed(
+            requests.get(environment.environmentId)!,
+            status(environment, "online"),
+          );
+        }
+
+        yield* discovery.refresh;
+        expect(yield* Ref.get(harness.listCalls)).toBe(1);
+
+        yield* harness.wake("application-active");
+        yield* Effect.yieldNow;
+
+        expect(yield* Ref.get(harness.listCalls)).toBe(2);
+      }).pipe(Effect.provide(harness.layer), Effect.scoped);
+    }),
+  );
+
   it.effect("settles to a clean empty state when refreshed while signed out", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness();
