@@ -1,5 +1,9 @@
 import { ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
+import {
+  MATRIX_OS_SETUP_ACTION_LABEL,
+  MATRIX_OS_SETUP_DESCRIPTION,
+} from "@t3tools/shared/matrixOsConnect";
 
 import { readLocalApi } from "../../localApi";
 import { Button } from "../ui/button";
@@ -37,7 +41,7 @@ export function MatrixOsConnectRow() {
   return (
     <SettingsRow
       title="Matrix OS"
-      description="Set up a persistent T3 environment on your Matrix OS computer, then access it here and from mobile through T3 Connect."
+      description={MATRIX_OS_SETUP_DESCRIPTION}
       control={
         <Button
           size="sm"
@@ -46,7 +50,7 @@ export function MatrixOsConnectRow() {
           onClick={() => void handleConnect()}
         >
           <ExternalLinkIcon aria-hidden className="size-3.5" />
-          {isOpening ? "Opening…" : "Connect"}
+          {isOpening ? "Opening…" : MATRIX_OS_SETUP_ACTION_LABEL}
         </Button>
       }
     />
