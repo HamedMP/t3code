@@ -45,6 +45,7 @@ import {
   isQrShareableEndpoint,
   selectQrEndpointOption,
 } from "./ConnectionsSettings.logic";
+import { MatrixOsConnectRow } from "./MatrixOsConnectRow";
 import {
   SettingsPageContainer,
   SettingsRow,
@@ -3444,6 +3445,7 @@ export function ConnectionsSettings() {
           </Dialog>
         }
       >
+        <MatrixOsConnectRow />
         {savedEnvironments.map((environment) => (
           <SavedBackendListRow
             key={environment.environmentId}

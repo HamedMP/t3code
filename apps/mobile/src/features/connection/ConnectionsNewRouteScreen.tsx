@@ -4,6 +4,7 @@ import { StackActions, useNavigation, type StaticScreenProps } from "@react-navi
 import { AsyncResult } from "effect/unstable/reactivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Linking, Platform, ScrollView, View } from "react-native";
+import { MATRIX_OS_CONNECT_URL } from "@t3tools/shared/matrixOsConnect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColor } from "../../lib/useThemeColor";
 
@@ -13,6 +14,7 @@ import { ErrorBanner } from "../../components/ErrorBanner";
 import { ConnectionSheetButton } from "./ConnectionSheetButton";
 import { buildPairingUrl, extractPairingUrlFromQrPayload, parsePairingUrl } from "./pairing";
 import { useRemoteConnections } from "../../state/use-remote-environment-registry";
+import { tryOpenExternalUrl } from "../../lib/openExternalUrl";
 
 type ConnectionsNewRouteParams = {
   readonly mode?: string;
@@ -42,10 +44,12 @@ export function ConnectionsNewRouteScreen({
   const [hostInput, setHostInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOpeningMatrixOs, setIsOpeningMatrixOs] = useState(false);
   const [showScanner, setShowScanner] = useState(params.mode === "scan_qr");
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [scannerLocked, setScannerLocked] = useState(false);
   const attemptedAutoConnectRef = useRef<string | null>(null);
+  const matrixOsLaunchInFlightRef = useRef(false);
 
   const headerIconColor = useThemeColor("--color-icon");
 
@@ -180,6 +184,27 @@ export function ConnectionsNewRouteScreen({
     void connectAndClose(routePairingUrl, true);
   }, [connectAndClose, routePairingUrl, shouldAutoConnect]);
 
+  const handleConnectMatrixOs = useCallback(async () => {
+    if (matrixOsLaunchInFlightRef.current) {
+      return;
+    }
+
+    matrixOsLaunchInFlightRef.current = true;
+    setIsOpeningMatrixOs(true);
+    try {
+      const opened = await tryOpenExternalUrl(MATRIX_OS_CONNECT_URL, "matrix-os-connect");
+      if (!opened) {
+        Alert.alert(
+          "Unable to open Matrix OS",
+          "Open app.matrix-os.com and connect T3 Code from its Terminal.",
+        );
+      }
+    } finally {
+      matrixOsLaunchInFlightRef.current = false;
+      setIsOpeningMatrixOs(false);
+    }
+  }, []);
+
   return (
     <View collapsable={false} className="flex-1 bg-sheet">
       <NativeStackScreenOptions
@@ -304,6 +329,26 @@ export function ConnectionsNewRouteScreen({
               />
             </View>
           )}
+          {!showScanner ? (
+            <View collapsable={false} className="gap-3 rounded-[24px] bg-card p-4">
+              <View collapsable={false} className="gap-1.5">
+                <Text className="text-base font-t3-bold text-foreground">Matrix OS</Text>
+                <Text className="text-sm leading-normal text-foreground-muted">
+                  Set up a persistent T3 environment on your Matrix OS computer, then access it from
+                  this app through T3 Connect.
+                </Text>
+              </View>
+              <ConnectionSheetButton
+                icon="safari"
+                label={isOpeningMatrixOs ? "Opening..." : "Connect Matrix OS"}
+                disabled={isOpeningMatrixOs}
+                tone="secondary"
+                onPress={() => {
+                  void handleConnectMatrixOs();
+                }}
+              />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>

@@ -226,6 +226,10 @@
     "./usageFormat": {
       "types": "./src/usageFormat.ts",
       "import": "./src/usageFormat.ts"
+    },
+    "./matrixOsConnect": {
+      "types": "./src/matrixOsConnect.ts",
+      "import": "./src/matrixOsConnect.ts"
     }
   },
   "scripts": {
