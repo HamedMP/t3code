@@ -54,7 +54,12 @@ import {
   renderTerminalQrCode,
   resolveHeadlessConnectionString,
 } from "../startupAccess.ts";
-import { baseDirFlag, DurationFromString, pairingBaseUrlFlag } from "./config.ts";
+import {
+  baseDirFlag,
+  DurationFromString,
+  normalizePairingBaseUrl,
+  pairingBaseUrlFlag,
+} from "./config.ts";
 
 const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/t3/environment";
 const PAIR_PROBE_TIMEOUT = Duration.millis(2_500);
@@ -81,6 +86,19 @@ export class NoRunningServerError extends Schema.TaggedErrorClass<NoRunningServe
       ...this.checkedStatePaths.map((statePath) => `  checked ${statePath}`),
       "Start one with `npx t3 serve`, or connect this machine with T3 Connect: `npx t3 connect`.",
     ].join("\n");
+  }
+}
+
+export class PairingBaseUrlMismatchError extends Schema.TaggedErrorClass<PairingBaseUrlMismatchError>()(
+  "PairingBaseUrlMismatchError",
+  {
+    requestedBaseUrl: Schema.String,
+    runningBaseUrl: Schema.optional(Schema.String),
+  },
+) {
+  override get message(): string {
+    const running = this.runningBaseUrl ?? "no public pairing URL";
+    return `The requested pairing base URL ${this.requestedBaseUrl} does not match the running server (${running}). Restart the server with the same --pairing-base-url before pairing.`;
   }
 }
 
@@ -317,6 +335,10 @@ const makePairServerConfig = Effect.fn(function* (input: {
   // an explicit home and therefore lands in `userdata`. The recorded devUrl is
   // what actually marks a dev server.
   const devUrl = state.devUrl !== undefined ? new URL(state.devUrl) : undefined;
+  const pairingBaseUrl =
+    state.pairingBaseUrl !== undefined
+      ? normalizePairingBaseUrl(new URL(state.pairingBaseUrl))
+      : undefined;
   const derivedPaths = yield* ServerConfig.deriveServerPaths(
     baseDir,
     variant === "dev" ? DEV_VARIANT_PLACEHOLDER_URL : undefined,
@@ -352,6 +374,7 @@ const makePairServerConfig = Effect.fn(function* (input: {
     logWebSocketEvents: false,
     tailscaleServeEnabled: false,
     tailscaleServePort: DEFAULT_TAILSCALE_SERVE_PORT,
+    ...(pairingBaseUrl ? { pairingBaseUrl } : {}),
   });
 });
 
@@ -504,16 +527,41 @@ export const pairCommand = Command.make("pair", {
 
       const notes: Array<string> = [];
       let pairingBaseUrl: string;
-      const explicitPairingBaseUrl = Option.getOrUndefined(flags.pairingBaseUrl);
+      let useHostedApp = false;
+      const explicitPairingBaseUrlValue = Option.getOrUndefined(flags.pairingBaseUrl);
+      const explicitPairingBaseUrl =
+        explicitPairingBaseUrlValue === undefined
+          ? undefined
+          : normalizePairingBaseUrl(explicitPairingBaseUrlValue).toString();
+      const runningPairingBaseUrl =
+        target.state.pairingBaseUrl === undefined
+          ? undefined
+          : normalizePairingBaseUrl(new URL(target.state.pairingBaseUrl)).toString();
       if (explicitPairingBaseUrl !== undefined) {
-        pairingBaseUrl = explicitPairingBaseUrl.toString();
+        if (explicitPairingBaseUrl !== runningPairingBaseUrl) {
+          return yield* new PairingBaseUrlMismatchError({
+            requestedBaseUrl: explicitPairingBaseUrl,
+            ...(runningPairingBaseUrl ? { runningBaseUrl: runningPairingBaseUrl } : {}),
+          });
+        }
+        pairingBaseUrl = explicitPairingBaseUrl;
+        useHostedApp = true;
       } else if (flags.tailscale) {
+        if (runningPairingBaseUrl !== undefined) {
+          return yield* new PairingBaseUrlMismatchError({
+            requestedBaseUrl: "a Tailscale Serve URL",
+            runningBaseUrl: runningPairingBaseUrl,
+          });
+        }
         const resolved = yield* resolveTailscalePairingBase({
           target,
           servePort: flags.tailscaleServePort,
         });
         pairingBaseUrl = resolved.baseUrl;
         notes.push(...resolved.notes);
+      } else if (runningPairingBaseUrl !== undefined) {
+        pairingBaseUrl = runningPairingBaseUrl;
+        useHostedApp = true;
       } else {
         pairingBaseUrl = resolveDirectPairingBaseUrl(target.state);
         if (isLoopbackHost(new URL(pairingBaseUrl).hostname)) {
@@ -533,7 +581,7 @@ export const pairCommand = Command.make("pair", {
       const pairingUrl = buildPairingUrl(
         pairingBaseUrl,
         issued.credential,
-        explicitPairingBaseUrl === undefined ? undefined : DEFAULT_HOSTED_APP_URL,
+        useHostedApp ? DEFAULT_HOSTED_APP_URL : undefined,
       );
 
       yield* Console.log(

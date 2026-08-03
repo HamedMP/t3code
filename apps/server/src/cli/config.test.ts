@@ -16,7 +16,9 @@ import {
 import * as NetService from "@t3tools/shared/Net";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { deriveServerPaths } from "../config.ts";
-import { resolveServerConfig } from "./config.ts";
+import { PairingBaseUrl, resolveServerConfig } from "./config.ts";
+
+const decodePairingBaseUrl = Schema.decodeUnknownSync(PairingBaseUrl);
 
 const deriveExplicitServerPaths = (baseDir: string, devUrl: URL | undefined) =>
   deriveServerPaths(baseDir, devUrl, { baseDirIsExplicit: true });
@@ -156,7 +158,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           tailscaleServeEnabled: Option.some(true),
           tailscaleServePort: Option.some(8443),
           pairingBaseUrl: Option.some(
-            new URL("https://app.matrix-os.com/vm/alice/api/integrations/t3/"),
+            new URL("https://app.matrix-os.com/vm/alice/api/integrations/t3"),
           ),
         },
         Option.some("Debug"),
@@ -197,6 +199,9 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         noBrowser: true,
         startupPresentation: "browser",
         desktopBootstrapToken: undefined,
+        desktopTelemetryFd: undefined,
+        desktopTelemetryControlFd: undefined,
+        resourceMonitorPath: undefined,
         autoBootstrapProjectFromCwd: true,
         logWebSocketEvents: true,
         tailscaleServeEnabled: true,
@@ -206,6 +211,13 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       assert.equal(resolved.dbPath, join(baseDir, "userdata", "state.sqlite"));
     }),
   );
+
+  it("accepts only HTTP(S) pairing base URLs", () => {
+    expect(decodePairingBaseUrl("https://example.com/proxy")).toEqual(
+      new URL("https://example.com/proxy"),
+    );
+    expect(() => decodePairingBaseUrl("ftp://example.com/proxy")).toThrow(/HTTP\(S\)/);
+  });
 
   it.effect("preserves explicit false CLI boolean flags over env and bootstrap values", () =>
     Effect.gen(function* () {

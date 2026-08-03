@@ -36,6 +36,10 @@ describe("advertised endpoint helpers", () => {
         "wss://app.matrix-os.com/vm/alice/api/integrations/t3/?stale=1#fragment",
       ).toString(),
     ).toBe("wss://app.matrix-os.com/vm/alice/api/integrations/t3/ws");
+    expect(environmentWebSocketUrl("wss://example.com/ws").toString()).toBe("wss://example.com/ws");
+    expect(environmentWebSocketUrl("wss://example.com/proxy/ws/").toString()).toBe(
+      "wss://example.com/proxy/ws",
+    );
   });
 
   it("marks HTTP endpoints as blocked from hosted HTTPS apps", () => {
