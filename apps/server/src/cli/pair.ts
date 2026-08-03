@@ -102,6 +102,15 @@ export class PairingBaseUrlMismatchError extends Schema.TaggedErrorClass<Pairing
   }
 }
 
+export class TailscalePairingConflictError extends Schema.TaggedErrorClass<TailscalePairingConflictError>()(
+  "TailscalePairingConflictError",
+  { runningBaseUrl: Schema.String },
+) {
+  override get message(): string {
+    return `This server cannot use --tailscale while configured behind ${this.runningBaseUrl}. Restart the server without --pairing-base-url before pairing through Tailscale.`;
+  }
+}
+
 // Each tailscale failure gets its own class (same reasoning as
 // scripts/lib/dev-share.ts): distinct caller-visible message, distinct remedy.
 export class TailscaleUnavailableError extends Schema.TaggedErrorClass<TailscaleUnavailableError>()(
@@ -548,8 +557,7 @@ export const pairCommand = Command.make("pair", {
         useHostedApp = true;
       } else if (flags.tailscale) {
         if (runningPairingBaseUrl !== undefined) {
-          return yield* new PairingBaseUrlMismatchError({
-            requestedBaseUrl: "a Tailscale Serve URL",
+          return yield* new TailscalePairingConflictError({
             runningBaseUrl: runningPairingBaseUrl,
           });
         }
