@@ -22,7 +22,8 @@ describe("MATRIX_OS_CONNECT_URL", () => {
 describe("Matrix OS setup copy", () => {
   it("describes an onboarding action instead of claiming connection status", () => {
     expect(MATRIX_OS_SETUP_ACTION_LABEL).toBe("Set up");
-    expect(MATRIX_OS_SETUP_MOBILE_ACTION_LABEL).toBe("Set up Matrix OS");
-    expect(MATRIX_OS_SETUP_DESCRIPTION).toContain("Remote environments");
+    expect(MATRIX_OS_SETUP_MOBILE_ACTION_LABEL).toBe("Open Matrix OS setup");
+    expect(MATRIX_OS_SETUP_DESCRIPTION).toContain("one-time pairing link");
+    expect(MATRIX_OS_SETUP_DESCRIPTION).toContain("No T3 account required");
   });
 });
