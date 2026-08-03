@@ -247,6 +247,38 @@ describe("t3 pair", () => {
     ).pipe(Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("rejects Tailscale pairing for a server configured behind another proxy", () =>
+    withDescriptorServer((origin) =>
+      Effect.gen(function* () {
+        const baseDir = NodeFS.mkdtempSync(
+          NodePath.join(NodeOS.tmpdir(), "t3-pair-proxy-tailscale-test-"),
+        );
+        const port = Number(new URL(origin).port);
+        const statePath = NodePath.join(baseDir, "userdata", "server-runtime.json");
+        yield* persistServerRuntimeState({
+          path: statePath,
+          state: yield* makePersistedServerRuntimeState({
+            config: {
+              host: "127.0.0.1",
+              devUrl: undefined,
+              pairingBaseUrl: new URL("https://example.com/proxy/"),
+            },
+            port,
+          }),
+        });
+
+        const error = yield* provideCliTestLayers(
+          runCli(["pair", "--base-dir", baseDir, "--tailscale"]).pipe(Effect.flip),
+        );
+        const rendered = String(
+          typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
+        );
+        assert.include(rendered, "cannot use --tailscale");
+        assert.include(rendered, "Restart the server without --pairing-base-url");
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("pairs through the recorded dev web URL for dev servers", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {
