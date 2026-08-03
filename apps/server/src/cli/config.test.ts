@@ -159,6 +159,9 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           logWebSocketEvents: Option.some(true),
           tailscaleServeEnabled: Option.some(true),
           tailscaleServePort: Option.some(8443),
+          pairingBaseUrl: Option.some(
+            new URL("https://app.matrix-os.com/vm/alice/api/integrations/t3/"),
+          ),
         },
         Option.some("Debug"),
       ).pipe(
@@ -202,6 +205,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         logWebSocketEvents: true,
         tailscaleServeEnabled: true,
         tailscaleServePort: 8443,
+        pairingBaseUrl: new URL("https://app.matrix-os.com/vm/alice/api/integrations/t3/"),
       });
       assert.equal(resolved.dbPath, join(baseDir, "userdata", "state.sqlite"));
     }),

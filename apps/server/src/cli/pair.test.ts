@@ -173,6 +173,39 @@ describe("t3 pair", () => {
     ).pipe(Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("advertises a trusted reverse-proxy base URL", () =>
+    withDescriptorServer((origin) =>
+      Effect.gen(function* () {
+        const baseDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-pair-proxy-test-"));
+        const port = Number(new URL(origin).port);
+        const statePath = NodePath.join(baseDir, "userdata", "server-runtime.json");
+        yield* persistServerRuntimeState({
+          path: statePath,
+          state: yield* makePersistedServerRuntimeState({
+            config: { host: "127.0.0.1", devUrl: undefined },
+            port,
+          }),
+        });
+
+        const output = yield* captureStdout(
+          runCli([
+            "pair",
+            "--base-dir",
+            baseDir,
+            "--pairing-base-url",
+            "https://example.com/vm/alice/api/integrations/t3/",
+          ]),
+        );
+
+        assert.include(
+          output,
+          "Pairing URL: https://app.t3.codes/pair?host=https%3A%2F%2Fexample.com%2Fvm%2Falice%2Fapi%2Fintegrations%2Ft3%2F#token=",
+        );
+        assert.notInclude(output, "only reachable from this machine");
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("pairs through the recorded dev web URL for dev servers", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {

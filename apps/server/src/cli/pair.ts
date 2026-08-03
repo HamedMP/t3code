@@ -15,6 +15,7 @@ import {
   PortSchema,
 } from "@t3tools/contracts";
 import { resolveWorktreeT3Home } from "@t3tools/shared/devHome";
+import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
@@ -53,7 +54,7 @@ import {
   renderTerminalQrCode,
   resolveHeadlessConnectionString,
 } from "../startupAccess.ts";
-import { baseDirFlag, DurationFromString } from "./config.ts";
+import { baseDirFlag, DurationFromString, pairingBaseUrlFlag } from "./config.ts";
 
 const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/t3/environment";
 const PAIR_PROBE_TIMEOUT = Duration.millis(2_500);
@@ -485,6 +486,7 @@ export const pairCommand = Command.make("pair", {
   baseDir: baseDirFlag,
   ttl: ttlFlag,
   label: labelFlag,
+  pairingBaseUrl: pairingBaseUrlFlag,
   tailscale: tailscaleFlag,
   tailscaleServePort: tailscaleServePortFlag,
 }).pipe(
@@ -502,7 +504,10 @@ export const pairCommand = Command.make("pair", {
 
       const notes: Array<string> = [];
       let pairingBaseUrl: string;
-      if (flags.tailscale) {
+      const explicitPairingBaseUrl = Option.getOrUndefined(flags.pairingBaseUrl);
+      if (explicitPairingBaseUrl !== undefined) {
+        pairingBaseUrl = explicitPairingBaseUrl.toString();
+      } else if (flags.tailscale) {
         const resolved = yield* resolveTailscalePairingBase({
           target,
           servePort: flags.tailscaleServePort,
@@ -525,7 +530,11 @@ export const pairCommand = Command.make("pair", {
 
       const config = yield* makePairServerConfig({ target, logLevel });
       const issued = yield* mintPairingLink({ config, ttl: flags.ttl, label: flags.label });
-      const pairingUrl = buildPairingUrl(pairingBaseUrl, issued.credential);
+      const pairingUrl = buildPairingUrl(
+        pairingBaseUrl,
+        issued.credential,
+        explicitPairingBaseUrl === undefined ? undefined : DEFAULT_HOSTED_APP_URL,
+      );
 
       yield* Console.log(
         formatPairOutput({
