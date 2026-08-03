@@ -11,8 +11,8 @@ export const environmentEndpointUrl = (httpBaseUrl: string, pathname: string): s
 
 export const environmentWebSocketUrl = (wsBaseUrl: string): URL => {
   const url = new URL(wsBaseUrl);
-  const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
-  url.pathname = `${basePath}ws`;
+  const basePath = url.pathname.replace(/\/+$/, "");
+  url.pathname = basePath === "/ws" || basePath.endsWith("/ws") ? basePath : `${basePath}/ws`;
   url.search = "";
   url.hash = "";
   return url;

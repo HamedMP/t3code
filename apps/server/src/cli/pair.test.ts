@@ -173,6 +173,43 @@ describe("t3 pair", () => {
     ).pipe(Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("rejects a pairing URL that differs from the running server", () =>
+    withDescriptorServer((origin) =>
+      Effect.gen(function* () {
+        const baseDir = NodeFS.mkdtempSync(
+          NodePath.join(NodeOS.tmpdir(), "t3-pair-proxy-mismatch-test-"),
+        );
+        const port = Number(new URL(origin).port);
+        const statePath = NodePath.join(baseDir, "userdata", "server-runtime.json");
+        yield* persistServerRuntimeState({
+          path: statePath,
+          state: yield* makePersistedServerRuntimeState({
+            config: {
+              host: "127.0.0.1",
+              devUrl: undefined,
+              pairingBaseUrl: new URL("https://example.com/expected/"),
+            },
+            port,
+          }),
+        });
+
+        const error = yield* provideCliTestLayers(
+          runCli([
+            "pair",
+            "--base-dir",
+            baseDir,
+            "--pairing-base-url",
+            "https://example.com/different/",
+          ]).pipe(Effect.flip),
+        );
+        const rendered = String(
+          typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
+        );
+        assert.include(rendered, "does not match the running server");
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("advertises a trusted reverse-proxy base URL", () =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {
@@ -182,7 +219,11 @@ describe("t3 pair", () => {
         yield* persistServerRuntimeState({
           path: statePath,
           state: yield* makePersistedServerRuntimeState({
-            config: { host: "127.0.0.1", devUrl: undefined },
+            config: {
+              host: "127.0.0.1",
+              devUrl: undefined,
+              pairingBaseUrl: new URL("https://example.com/vm/alice/api/integrations/t3/"),
+            },
             port,
           }),
         });

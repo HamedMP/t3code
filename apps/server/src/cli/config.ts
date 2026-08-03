@@ -74,8 +74,24 @@ export const tailscaleServePortFlag = Flag.integer("tailscale-serve-port").pipe(
   Flag.withDescription("HTTPS port for Tailscale Serve when --tailscale-serve is enabled."),
   Flag.optional,
 );
+export const PairingBaseUrl = Schema.URLFromString.pipe(
+  Schema.refine((url): url is URL => url.protocol === "http:" || url.protocol === "https:", {
+    message: "Expected an HTTP(S) URL",
+  }),
+);
+
+export const normalizePairingBaseUrl = (value: URL): URL => {
+  const normalized = new URL(value);
+  if (!normalized.pathname.endsWith("/")) {
+    normalized.pathname = `${normalized.pathname}/`;
+  }
+  normalized.search = "";
+  normalized.hash = "";
+  return normalized;
+};
+
 export const pairingBaseUrlFlag = Flag.string("pairing-base-url").pipe(
-  Flag.withSchema(Schema.URLFromString),
+  Flag.withSchema(PairingBaseUrl),
   Flag.withDescription(
     "Public HTTP(S) base URL advertised in the headless pairing link when a trusted reverse proxy fronts this server.",
   ),
@@ -146,7 +162,7 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  pairingBaseUrl: Config.url("T3CODE_PAIRING_BASE_URL").pipe(
+  pairingBaseUrl: Config.schema(PairingBaseUrl, "T3CODE_PAIRING_BASE_URL").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
@@ -352,12 +368,14 @@ export const resolveServerConfig = (
       ),
       () => 443,
     );
-    const pairingBaseUrl = Option.getOrUndefined(
+    const pairingBaseUrlValue = Option.getOrUndefined(
       resolveOptionPrecedence(
         normalizedFlags.pairingBaseUrl,
         Option.fromUndefinedOr(env.pairingBaseUrl),
       ),
     );
+    const pairingBaseUrl =
+      pairingBaseUrlValue === undefined ? undefined : normalizePairingBaseUrl(pairingBaseUrlValue);
     const staticDir = devUrl ? undefined : yield* ServerConfig.resolveStaticDir();
     const host = Option.getOrElse(
       resolveOptionPrecedence(
