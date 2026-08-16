@@ -44,6 +44,7 @@ function pairingHttpLayer(
         Response.json({
           environmentId: "environment-paired",
           label: "Paired environment",
+          distribution: "matrix-server",
           platform: {
             os: "linux",
             arch: "x64",
@@ -96,6 +97,7 @@ describe("connection onboarding", () => {
           connectionId: "bearer:environment-paired",
           httpBaseUrl: "https://remote.example.test/",
           wsBaseUrl: "wss://remote.example.test/",
+          distribution: "matrix-server",
         },
         credential: {
           token: "bearer-token",
@@ -204,6 +206,7 @@ describe("connection onboarding", () => {
               label: "Old label",
               httpBaseUrl: "http://old.example.test/",
               wsBaseUrl: "ws://old.example.test/",
+              distribution: "matrix-server",
             }),
           ),
         }),
@@ -219,8 +222,9 @@ describe("connection onboarding", () => {
         profile: {
           environmentId,
           label: "Renamed environment",
-          httpBaseUrl: "http://100.65.180.100:3773/",
-          wsBaseUrl: "ws://100.65.180.100:3773/",
+          httpBaseUrl: "http://100.65.180.100:3773/path/",
+          wsBaseUrl: "ws://100.65.180.100:3773/path/",
+          distribution: "matrix-server",
         },
         credential: { token: "bearer-token" },
       });

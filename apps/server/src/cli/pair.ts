@@ -1,5 +1,5 @@
 /**
- * `t3 pair` - mint a pairing token for an already-running server and print it
+ * `matrix-server pair` - mint a pairing token for an already-running server and print it
  * as a QR code, without restarting anything.
  *
  * Discovery reads the `server-runtime.json` a live server persists next to its
@@ -15,7 +15,6 @@ import {
   PortSchema,
 } from "@t3tools/contracts";
 import { resolveWorktreeT3Home } from "@t3tools/shared/devHome";
-import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
@@ -82,9 +81,9 @@ export class NoRunningServerError extends Schema.TaggedErrorClass<NoRunningServe
 ) {
   override get message(): string {
     return [
-      "No running T3 Code server found.",
+      "No running Matrix Server found.",
       ...this.checkedStatePaths.map((statePath) => `  checked ${statePath}`),
-      "Start one with `npx t3 serve`, or connect this machine with T3 Connect: `npx t3 connect`.",
+      "Start one with `npx matrix-server serve`.",
     ].join("\n");
   }
 }
@@ -136,7 +135,7 @@ export class ServesOtherEnvironmentError extends Schema.TaggedErrorClass<ServesO
   { servePort: Schema.Number },
 ) {
   override get message(): string {
-    return `Tailscale Serve on HTTPS port ${String(this.servePort)} already fronts a different T3 Code server. Pass --tailscale-serve-port to publish this one on another port.`;
+    return `Tailscale Serve on HTTPS port ${String(this.servePort)} already fronts a different Matrix Server. Pass --tailscale-serve-port to publish this one on another port.`;
   }
 }
 
@@ -154,7 +153,7 @@ export class ServePortOccupiedError extends Schema.TaggedErrorClass<ServePortOcc
   { servePort: Schema.Number },
 ) {
   override get message(): string {
-    return `HTTPS port ${String(this.servePort)} on the tailnet already serves something that is not a T3 Code server. Pass --tailscale-serve-port to publish this one on another port.`;
+    return `HTTPS port ${String(this.servePort)} on the tailnet already serves something that is not a Matrix Server. Pass --tailscale-serve-port to publish this one on another port.`;
   }
 }
 
@@ -241,15 +240,9 @@ const probeEnvironmentDescriptor = (
       // Transport failure or timeout: nothing (reachable) is listening there.
       Effect.mapError(() => ({ _tag: "unreachable" }) as const),
     );
-    // Bad-gateway family means a proxy (Tailscale Serve) answered for a
-    // backend that is gone — a stale mapping, not a live occupant. Treating
-    // it as unreachable lets `t3 pair --tailscale` repair its own mapping
-    // after the server's port changed.
-    if (response.status === 502 || response.status === 503 || response.status === 504) {
-      return { _tag: "unreachable" } as const;
-    }
-    // Anything else that answered HTTP but not with a valid descriptor is
-    // some other service.
+    // Any HTTP responder that does not prove it is this Matrix Server owns
+    // the mapping. In particular, a gateway error can belong to an unrelated
+    // unhealthy service and must never authorize an automatic takeover.
     const descriptor = yield* HttpClientResponse.filterStatusOk(response).pipe(
       Effect.flatMap(HttpClientResponse.schemaBodyJson(ExecutionEnvironmentDescriptor)),
       Effect.mapError(() => ({ _tag: "not-a-t3-server" }) as const),
@@ -523,7 +516,7 @@ export const pairCommand = Command.make("pair", {
   tailscaleServePort: tailscaleServePortFlag,
 }).pipe(
   Command.withDescription(
-    "Mint a pairing token for a running T3 Code server and print it as a QR code.",
+    "Mint a pairing token for a running Matrix Server and print it as a QR code.",
   ),
   Command.withHandler((flags) =>
     Effect.gen(function* () {
@@ -536,7 +529,6 @@ export const pairCommand = Command.make("pair", {
 
       const notes: Array<string> = [];
       let pairingBaseUrl: string;
-      let useHostedApp = false;
       const explicitPairingBaseUrlValue = Option.getOrUndefined(flags.pairingBaseUrl);
       const explicitPairingBaseUrl =
         explicitPairingBaseUrlValue === undefined
@@ -554,7 +546,6 @@ export const pairCommand = Command.make("pair", {
           });
         }
         pairingBaseUrl = explicitPairingBaseUrl;
-        useHostedApp = true;
       } else if (flags.tailscale) {
         if (runningPairingBaseUrl !== undefined) {
           return yield* new TailscalePairingConflictError({
@@ -569,7 +560,6 @@ export const pairCommand = Command.make("pair", {
         notes.push(...resolved.notes);
       } else if (runningPairingBaseUrl !== undefined) {
         pairingBaseUrl = runningPairingBaseUrl;
-        useHostedApp = true;
       } else {
         pairingBaseUrl = resolveDirectPairingBaseUrl(target.state);
         if (isLoopbackHost(new URL(pairingBaseUrl).hostname)) {
@@ -586,11 +576,7 @@ export const pairCommand = Command.make("pair", {
 
       const config = yield* makePairServerConfig({ target, logLevel });
       const issued = yield* mintPairingLink({ config, ttl: flags.ttl, label: flags.label });
-      const pairingUrl = buildPairingUrl(
-        pairingBaseUrl,
-        issued.credential,
-        useHostedApp ? DEFAULT_HOSTED_APP_URL : undefined,
-      );
+      const pairingUrl = buildPairingUrl(pairingBaseUrl, issued.credential);
 
       yield* Console.log(
         formatPairOutput({

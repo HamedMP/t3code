@@ -1,5 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { PreparedConnection } from "@t3tools/client-runtime/connection";
+import {
+  resolveDefaultChatEnvironmentId,
+  type PreparedConnection,
+} from "@t3tools/client-runtime/connection";
 import type { EnvironmentId } from "@t3tools/contracts";
 import type { ServerConfig } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
@@ -102,6 +105,7 @@ export function useSavedRemoteConnections() {
   return {
     isLoadingSavedConnection: !catalog.isReady,
     savedConnectionsById,
+    defaultChatEnvironmentId: resolveDefaultChatEnvironmentId(catalog.entries),
   };
 }
 

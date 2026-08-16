@@ -1,6 +1,5 @@
 import * as NodeOS from "node:os";
 
-import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
 import { QrCode } from "@t3tools/shared/qrCode";
 import * as Effect from "effect/Effect";
 import { HttpServer } from "effect/unstable/http";
@@ -10,8 +9,8 @@ import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 
 export interface HeadlessServeAccessInfo {
   readonly connectionString: string;
-  readonly token: string;
-  readonly pairingUrl: string;
+  readonly token: string | null;
+  readonly pairingUrl: string | null;
 }
 
 type NetworkInterfacesMap = ReturnType<typeof NodeOS.networkInterfaces>;
@@ -90,17 +89,7 @@ export const resolveListeningPort = (address: unknown, fallbackPort: number): nu
   return fallbackPort;
 };
 
-export const buildPairingUrl = (
-  connectionString: string,
-  token: string,
-  hostedAppUrl?: string,
-): string => {
-  if (hostedAppUrl) {
-    const url = new URL("/pair", hostedAppUrl);
-    url.searchParams.set("host", connectionString);
-    url.hash = new URLSearchParams([["token", token]]).toString();
-    return url.toString();
-  }
+export const buildPairingUrl = (connectionString: string, token: string): string => {
   const url = new URL(connectionString);
   const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
   url.pathname = `${basePath}pair`;
@@ -132,34 +121,45 @@ export const renderTerminalQrCode = (value: string, margin = 2): string => {
 };
 
 export const formatHeadlessServeOutput = (accessInfo: HeadlessServeAccessInfo): string =>
-  [
-    "T3 Code server is ready.",
-    `Connection string: ${accessInfo.connectionString}`,
-    `Token: ${accessInfo.token}`,
-    `Pairing URL: ${accessInfo.pairingUrl}`,
-    "",
-    renderTerminalQrCode(accessInfo.pairingUrl),
-    "",
-  ].join("\n");
+  accessInfo.pairingUrl === null || accessInfo.token === null
+    ? [
+        "Matrix Server is ready.",
+        `Connection string: ${accessInfo.connectionString}`,
+        "",
+        "Tailscale Serve is starting. In another shell, run `matrix-server pair --tailscale` to create the HTTPS pairing link.",
+        "",
+      ].join("\n")
+    : [
+        "Matrix Server is ready.",
+        `Connection string: ${accessInfo.connectionString}`,
+        `Token: ${accessInfo.token}`,
+        `Pairing URL: ${accessInfo.pairingUrl}`,
+        "",
+        renderTerminalQrCode(accessInfo.pairingUrl),
+        "",
+      ].join("\n");
 
 export const issueHeadlessServeAccessInfo = Effect.fn("issueHeadlessServeAccessInfo")(function* () {
   const serverConfig = yield* ServerConfig;
   const httpServer = yield* HttpServer.HttpServer;
-  const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
   const connectionString = resolveHeadlessConnectionString(
     serverConfig.host,
     resolveListeningPort(httpServer.address, serverConfig.port),
   );
+  if (serverConfig.tailscaleServeEnabled && serverConfig.pairingBaseUrl === undefined) {
+    return {
+      connectionString,
+      token: null,
+      pairingUrl: null,
+    } satisfies HeadlessServeAccessInfo;
+  }
+  const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
   const pairingBaseUrl = serverConfig.pairingBaseUrl?.toString() ?? connectionString;
   const issued = yield* serverAuth.issueStartupPairingCredential();
 
   return {
     connectionString,
     token: issued.credential,
-    pairingUrl: buildPairingUrl(
-      pairingBaseUrl,
-      issued.credential,
-      serverConfig.pairingBaseUrl ? DEFAULT_HOSTED_APP_URL : undefined,
-    ),
+    pairingUrl: buildPairingUrl(pairingBaseUrl, issued.credential),
   } satisfies HeadlessServeAccessInfo;
 });

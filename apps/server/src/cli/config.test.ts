@@ -216,9 +216,19 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     }),
   );
 
-  it("accepts only HTTP(S) pairing base URLs", () => {
+  it("accepts HTTPS and loopback HTTP pairing base URLs", () => {
     expect(decodePairingBaseUrl("https://example.com/proxy")).toEqual(
       new URL("https://example.com/proxy"),
+    );
+    expect(decodePairingBaseUrl("http://127.0.0.1:3773/proxy")).toEqual(
+      new URL("http://127.0.0.1:3773/proxy"),
+    );
+    expect(decodePairingBaseUrl("http://[::1]:3773/proxy")).toEqual(
+      new URL("http://[::1]:3773/proxy"),
+    );
+    expect(() => decodePairingBaseUrl("http://example.com/proxy")).toThrow(/HTTPS/);
+    expect(() => decodePairingBaseUrl("https://user:secret@example.com/proxy")).toThrow(
+      /credentials/,
     );
     expect(() => decodePairingBaseUrl("ftp://example.com/proxy")).toThrow(/HTTP\(S\)/);
   });

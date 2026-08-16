@@ -14,6 +14,12 @@ const descriptor = {
 } as const;
 
 describe("ExecutionEnvironmentDescriptor", () => {
+  it("preserves an advertised Matrix Server distribution marker", () => {
+    expect(decodeDescriptor({ ...descriptor, distribution: "matrix-server" }).distribution).toBe(
+      "matrix-server",
+    );
+  });
+
   it("treats a missing pull-request capability as unsupported under version skew", () => {
     expect(decodeDescriptor(descriptor).capabilities.pullRequests).toBeUndefined();
   });

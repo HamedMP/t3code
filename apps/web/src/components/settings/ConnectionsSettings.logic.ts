@@ -1,4 +1,19 @@
 import type { AdvertisedEndpoint, DesktopBridge, DesktopWslState } from "@t3tools/contracts";
+import { resolveRemotePairingTarget } from "@t3tools/shared/remote";
+
+export function parseRemotePairingUrlFields(
+  input: string,
+): { readonly host: string; readonly pairingCode: string } | null {
+  const pairingUrl = input.trim();
+  if (!pairingUrl) return null;
+
+  try {
+    const target = resolveRemotePairingTarget({ pairingUrl });
+    return { host: target.httpBaseUrl, pairingCode: target.credential };
+  } catch {
+    return null;
+  }
+}
 
 type WslEnableBridge = Pick<DesktopBridge, "setWslBackendEnabled" | "setWslDistro" | "setWslOnly">;
 

@@ -30,9 +30,26 @@ export function resolveDpopRequestUrl(input: {
   readonly localUrl: URL;
   readonly originalUrl: string;
   readonly pairingBaseUrl?: URL;
-}): string {
+}): string | null {
   if (!input.pairingBaseUrl) return input.localUrl.href;
-  return new URL(input.originalUrl.replace(/^\/+/, ""), input.pairingBaseUrl).href;
+  if (
+    !input.originalUrl.startsWith("/") ||
+    input.originalUrl.startsWith("//") ||
+    input.originalUrl.includes("\\") ||
+    input.originalUrl.includes("#")
+  ) {
+    return null;
+  }
+  const requestTarget = new URL(input.originalUrl, "http://localhost");
+  if (/^\/[a-z][a-z\d+.-]*:\/\//iu.test(requestTarget.pathname)) {
+    return null;
+  }
+  const resolved = new URL(input.pairingBaseUrl);
+  const basePath = resolved.pathname.endsWith("/") ? resolved.pathname : `${resolved.pathname}/`;
+  resolved.pathname = `${basePath}${requestTarget.pathname.replace(/^\/+/, "")}`;
+  resolved.search = requestTarget.search;
+  resolved.hash = "";
+  return resolved.href;
 }
 
 export const verifyRequestDpopProof = (input: {
@@ -54,6 +71,11 @@ export const verifyRequestDpopProof = (input: {
       originalUrl: input.request.originalUrl,
       ...(input.pairingBaseUrl ? { pairingBaseUrl: input.pairingBaseUrl } : {}),
     });
+    if (requestUrl === null) {
+      return yield* new ServerAuthInvalidCredentialError({
+        diagnostic: "Invalid DPoP request target.",
+      });
+    }
     const now = yield* DateTime.now;
     const result = verifyDpopProof({
       proof,

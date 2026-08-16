@@ -9,7 +9,6 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 import * as HttpClient from "effect/unstable/http/HttpClient";
 
 import { bootstrapRemoteBearerSession } from "../authorization/remote.ts";
-import { deriveWsBaseUrl, normalizeHttpBaseUrl } from "../environment/endpoint.ts";
 import { fetchRemoteEnvironmentDescriptor } from "../environment/descriptor.ts";
 import * as ClientCapabilities from "../platform/capabilities.ts";
 import {
@@ -111,6 +110,7 @@ export const preparePairingRegistration = Effect.fn(
       label: descriptor.label,
       httpBaseUrl: target.httpBaseUrl,
       wsBaseUrl: target.wsBaseUrl,
+      ...(descriptor.distribution ? { distribution: descriptor.distribution } : {}),
     }),
     credential: new BearerConnectionCredential({
       token: access.access_token,
@@ -184,14 +184,19 @@ export const prepareBearerConnectionUpdate = Effect.fn(
       detail: "Environment label cannot be empty.",
     });
   }
-  const httpBaseUrl = yield* Effect.try({
-    try: () => normalizeHttpBaseUrl(options.input.httpBaseUrl),
+  const pairingTarget = yield* Effect.try({
+    try: () =>
+      resolveRemotePairingTarget({
+        host: options.input.httpBaseUrl,
+        pairingCode: "path-normalization-placeholder",
+      }),
     catch: (cause) =>
       new ConnectionBlockedError({
         reason: "configuration",
         detail: cause instanceof Error ? cause.message : "The environment URL is invalid.",
       }),
   });
+  const httpBaseUrl = pairingTarget.httpBaseUrl;
   const connectionId = entry.target.connectionId;
   return new BearerConnectionRegistration({
     target: new BearerConnectionTarget({
@@ -204,7 +209,10 @@ export const prepareBearerConnectionUpdate = Effect.fn(
       environmentId: options.input.environmentId,
       label,
       httpBaseUrl,
-      wsBaseUrl: deriveWsBaseUrl(httpBaseUrl),
+      wsBaseUrl: pairingTarget.wsBaseUrl,
+      ...(entry.profile.value.distribution
+        ? { distribution: entry.profile.value.distribution }
+        : {}),
     }),
     credential: credential.value,
   });

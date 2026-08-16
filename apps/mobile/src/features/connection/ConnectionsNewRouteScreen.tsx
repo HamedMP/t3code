@@ -200,7 +200,7 @@ export function ConnectionsNewRouteScreen({
       if (!opened) {
         Alert.alert(
           "Unable to open Matrix OS",
-          "Open app.matrix-os.com and connect T3 Code from its Terminal.",
+          "Install Matrix Server on the target computer, run `matrix-server pair`, then paste its pairing link here.",
         );
       }
     } finally {

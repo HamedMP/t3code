@@ -58,16 +58,10 @@ it("builds a pairing URL that embeds the token in the hash", () => {
   );
 });
 
-it("builds a hosted pairing URL from an advertised reverse-proxy base", () => {
+it("keeps reverse-proxy pairing credentials on the configured Matrix origin", () => {
   expect(
-    buildPairingUrl(
-      "https://app.matrix-os.com/vm/alice/api/integrations/t3/",
-      "PAIRCODE",
-      "https://app.t3.codes",
-    ),
-  ).toBe(
-    "https://app.t3.codes/pair?host=https%3A%2F%2Fapp.matrix-os.com%2Fvm%2Falice%2Fapi%2Fintegrations%2Ft3%2F#token=PAIRCODE",
-  );
+    buildPairingUrl("https://app.matrix-os.com/vm/alice/api/integrations/t3/", "PAIRCODE"),
+  ).toBe("https://app.matrix-os.com/vm/alice/api/integrations/t3/pair#token=PAIRCODE");
 });
 
 it("renders terminal QR codes as a multi-line unicode block grid", () => {
@@ -88,4 +82,16 @@ it("formats headless serve output with the connection string, token, pairing url
   expect(output).toContain("Token: PAIRCODE");
   expect(output).toContain("Pairing URL: http://192.168.1.42:3773/pair#token=PAIRCODE");
   assert.isTrue(output.includes("█") || output.includes("▀") || output.includes("▄"));
+});
+
+it("does not print a loopback pairing secret while Tailscale Serve is still starting", () => {
+  const output = formatHeadlessServeOutput({
+    connectionString: "http://localhost:3773",
+    token: null,
+    pairingUrl: null,
+  });
+
+  expect(output).toContain("matrix-server pair --tailscale");
+  expect(output).not.toContain("Token:");
+  expect(output).not.toContain("Pairing URL: http://localhost");
 });

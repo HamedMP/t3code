@@ -1,26 +1,26 @@
-# Remote Access
+# Matrix Server Remote Access
 
-Use this when you want to connect to a T3 Code server from another device such as a phone, tablet, or separate desktop app.
+Use this when you want to connect to Matrix Server from another device such as a phone, tablet, or separate desktop app.
 
 ## Quick Pairing for a Running Server
 
 If a server is already running on this machine, mint a fresh pairing token and QR code without restarting anything:
 
 ```bash
-npx t3 pair
+npx matrix-server pair
 ```
 
-`t3 pair` finds the running server (the shared `~/.t3` install, or the current worktree's dev server when run inside one), issues a one-time pairing token, and prints the pairing URL as a QR code you can scan from your phone.
+`matrix-server pair` finds the running server, issues a one-time pairing token, and prints the pairing URL as a QR code you can scan from your phone.
 
 If the server is only bound to loopback, the printed URL is not reachable from another device. Pair over your tailnet instead:
 
 ```bash
-npx t3 pair --tailscale
+npx matrix-server pair --tailscale
 ```
 
 This publishes the server over Tailscale Serve HTTPS (configuring the mapping if needed — it persists until you run `tailscale serve --https=443 off`) and pairs through the `https://machine.tailnet.ts.net/` URL. Use `--tailscale-serve-port` for a different HTTPS port, `--ttl` to change the token lifetime, and `--base-dir` to target a specific data directory.
 
-If no server is running, `t3 pair` says so and points you at `npx t3 serve` or `npx t3 connect`.
+If no server is running, `matrix-server pair` points you at `npx matrix-server serve`.
 
 ## Recommended Setup
 
@@ -35,7 +35,7 @@ That gives you:
 ## Enabling Network Access
 
 There are three ways to reach your server from another device: expose the desktop app's backend,
-run a headless server from the CLI, or have the desktop app launch T3 Code over SSH.
+run a headless server from the CLI, or have the desktop app launch Matrix Server over SSH.
 
 ### Option 1: Desktop App
 
@@ -51,12 +51,12 @@ The default endpoint controls the QR code and primary copy action for pairing li
 When no user default is saved, the app uses the built-in LAN endpoint for pairing links when
 available. You can set another endpoint as the default from the expanded endpoint list.
 
-- HTTPS/WSS-compatible endpoints work from `https://app.t3.codes`, but are not made the default
+- HTTPS/WSS-compatible endpoints work from `https://code.matrix-os.com`, but are not made the default
   automatically.
 - Non-loopback HTTP endpoints are useful for direct LAN pairing.
 - Loopback-only endpoints are not useful for another device unless that device is the same machine.
 
-If the copied link points directly at `http://192.168.x.y:3773`, open it from a client that can reach that LAN address. If it points at `https://app.t3.codes/pair?...`, the hosted web app will save the environment and connect directly to the backend URL in the link.
+If the copied link points directly at `http://192.168.x.y:3773`, open it from a client that can reach that LAN address. Matrix Server reverse-proxy links point directly at the configured HTTPS server origin and keep the token in the URL fragment.
 
 In the mobile app's **Add Environment** form, a numeric IP address without a scheme uses HTTP. Include `https://` explicitly when the backend is served over HTTPS.
 
@@ -73,34 +73,28 @@ Depending on your Tailscale setup, this may include:
 The Tailscale HTTPS endpoint uses the clean MagicDNS URL, such as
 `https://machine.tailnet.ts.net/`, and is off until you opt in. Turn on **Enable Tailscale HTTPS**
 on the **Tailscale HTTPS** row in **Settings** → **Connections**. The desktop app restarts the
-backend with the same server-side behavior as `t3 serve --tailscale-serve`, then the server asks
+backend with the same server-side behavior as `matrix-server serve --tailscale-serve`, then the server asks
 Tailscale Serve to proxy HTTPS traffic to the local backend. Turn the same switch off to stop it.
 
 The Tailscale support is an endpoint provider add-on. The core remote model still works without Tailscale: LAN HTTP endpoints, custom HTTPS endpoints, future tunnels, and SSH-launched environments all use the same saved environment and pairing flow.
 
-For `https://app.t3.codes`, prefer an HTTPS Tailnet or other HTTPS endpoint. A plain `http://100.x.y.z:3773` endpoint can still work from a desktop client or another browser page served over HTTP, but it will not work from the hosted HTTPS app because of browser mixed-content rules.
+For `https://code.matrix-os.com`, prefer an HTTPS Tailnet or other HTTPS endpoint. A plain `http://100.x.y.z:3773` endpoint can still work from a desktop client or another browser page served over HTTP, but it will not work from the hosted HTTPS app because of browser mixed-content rules.
 
 ### Option 2: Headless Server (CLI)
 
 Use this when you want to run the server without a GUI, for example on a remote machine over SSH.
 
-If your remote machine runs Matrix OS, choose **Settings** → **Connections** → **Matrix OS** in
-the desktop or web client, or **Add Environment** → **Open Matrix OS setup** on mobile. T3 Code
-opens the Matrix OS Terminal with a pinned T3 CLI setup ready to run. Review and confirm the
-command. Matrix OS either prints a fresh one-time pairing link for the running T3 server or starts
-the server and prints its pairing link and QR code. Scan the QR code on mobile, or paste the full
-pairing URL into the desktop or web client. No T3 account is required: Matrix OS exposes the local
-server through a scoped reverse proxy while T3 Code continues to authenticate the pairing link,
-device session, and WebSocket connection. Keep the Matrix Terminal session running to keep the
-environment reachable.
+Install Matrix Server directly on the remote computer, including a Matrix OS VPS. This does not
+change the Matrix OS host bundle. Start it and pair through Tailscale or an HTTPS reverse proxy,
+then paste the full pairing URL into the desktop or mobile client.
 
-Run the server with `t3 serve`.
+Run the server with `matrix-server serve`.
 
 ```bash
-npx t3 serve --host "$(tailscale ip -4)"
+npx matrix-server serve --host "$(tailscale ip -4)"
 ```
 
-`t3 serve` starts the server without opening a browser and prints:
+`matrix-server serve` starts the server without opening a browser and prints:
 
 - a connection string
 - a pairing token
@@ -114,29 +108,29 @@ From there, connect from another device in either of these ways:
 - in the desktop app, enter the host and token separately
 - in the hosted web app, open a hosted pairing URL when the backend is reachable over HTTPS
 
-Use `t3 serve --help` for the full flag reference. It supports the same general startup options as the normal server command, including an optional `cwd` argument.
+Use `matrix-server serve --help` for the full flag reference. It supports the same general startup options as the normal server command, including an optional `cwd` argument.
 
 If a trusted reverse proxy exposes the server at a different or path-prefixed public URL, keep T3
-bound to the private interface and advertise the public base explicitly. The printed link opens the
-hosted T3 client and points it at that backend, so the proxy only needs to expose the T3 protocol:
+bound to the private interface and advertise the public base explicitly. The proxy only needs to
+expose the compatible server protocol:
 
 ```bash
-npx t3 serve --host 127.0.0.1 --pairing-base-url https://example.com/path/to/t3/
+npx matrix-server serve --host 127.0.0.1 --pairing-base-url https://example.com/path/to/matrix/
 ```
 
-Use the same `--pairing-base-url` with `t3 pair` to print a fresh link for that running server.
+Use the same `--pairing-base-url` with `matrix-server pair` to print a fresh link for that running server.
 
 For hosted web pairing over Tailscale HTTPS, opt in to Tailscale Serve:
 
 ```bash
-npx t3 serve --tailscale-serve
+npx matrix-server serve --tailscale-serve
 ```
 
 By default this configures Tailscale Serve on HTTPS port 443 and advertises
 `https://machine.tailnet.ts.net/`. Advanced users can choose a different HTTPS port:
 
 ```bash
-npx t3 serve --tailscale-serve --tailscale-serve-port 8443
+npx matrix-server serve --tailscale-serve --tailscale-serve-port 8443
 ```
 
 Once paired, add projects normally: open the Command Palette and choose **Add Project**, then pick
@@ -144,7 +138,7 @@ the environment the project lives on. Every saved environment is offered, not on
 
 ### Option 3: Desktop-Managed SSH Launch
 
-Use this when you want the desktop app to start or reuse T3 Code on another machine over SSH.
+Use this when you want the desktop app to start or reuse Matrix Server on another machine over SSH.
 
 1. Open **Settings** → **Connections**.
 2. Under **Remote Environments**, choose **Add environment**.
@@ -160,13 +154,13 @@ SSH launch is a desktop feature because it needs local process and SSH access. O
 
 The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.t3/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
 
-The remote host must have a compatible Node.js runtime. T3 Code uses the server package's `engines.node` requirement:
+The remote host must have a compatible Node.js runtime. Matrix Server uses the server package's `engines.node` requirement:
 
 ```text
 ^22.16 || ^23.11 || >=24.10
 ```
 
-During SSH launch, T3 Code first checks whether `node` is on `PATH`. If it is missing, the launcher
+During SSH launch, Matrix first checks whether `node` is on `PATH`. If it is missing, the launcher
 looks in the usual install directories and tries to activate a version manager if it finds one
 (Volta, asdf, mise, fnm, nodenv, nvm). That covers most setups, but a version manager that only
 initializes from an interactive shell profile will not be picked up.
@@ -189,16 +183,16 @@ If reconnecting after an app update fails, retry the SSH launch once. The launch
 
 ## Updating a Remote Server
 
-When the T3 Code web or desktop app and a remote server use different versions, a warning appears in
-the conversation and in **Settings** → **Connections**. Follow the action shown there: T3 Code may
+When the Matrix web or desktop app and a remote server use different versions, a warning appears in
+the conversation and in **Settings** → **Connections**. Follow the action shown there: Matrix may
 be able to update and reconnect the server for you, or it may ask you to update the desktop app or
 run a copied command on the server machine.
 
 Finish active work before updating because the server restarts briefly. For step-by-step guidance,
-see [Keeping T3 Code in Sync](./updating.md).
+see [Keeping Matrix in Sync](./updating.md).
 
 On a Linux host, you can keep the server running after logout and manage it independently of the
-connection method. See [Running T3 Code in the Background](./background-service.md).
+connection method. See [Running Matrix Server in the Background](./background-service.md).
 
 ## How Pairing Works
 
@@ -206,7 +200,7 @@ The remote device does not need a long-lived secret up front.
 
 Instead:
 
-1. `t3 serve` issues a one-time owner pairing token.
+1. `matrix-server serve` issues a one-time owner pairing token.
 2. The remote device exchanges that token with the server.
 3. The server creates an authenticated session for that device.
 
@@ -214,17 +208,17 @@ After pairing, future access is session-based. You do not need to keep reusing t
 
 ## Hosted Web App Pairing
 
-The hosted web app at `https://app.t3.codes` can save a remote backend in browser local storage from a URL like:
+The hosted web app at `https://code.matrix-os.com` can save a remote backend in browser local storage from a URL like:
 
 ```text
-https://app.t3.codes/pair?host=https://backend.example.com:3773#token=PAIRCODE
+https://code.matrix-os.com/pair?host=https://backend.example.com:3773#token=PAIRCODE
 ```
 
 Use hosted pairing when the backend is reachable from the browser over HTTPS/WSS. This includes a backend behind a trusted HTTPS tunnel or another HTTPS endpoint you operate.
 
 Do not use hosted pairing for plain HTTP LAN URLs such as `http://192.168.x.y:3773`. Browsers block an HTTPS page from connecting to an insecure HTTP or WS backend. For those endpoints, use the direct pairing URL shown by the desktop app or CLI from a client that can open that HTTP URL directly.
 
-Hosted pairing does not proxy traffic through T3 Code. The browser still connects directly to the backend URL in the pairing link.
+Hosted pairing does not proxy traffic through Matrix. The browser still connects directly to the backend URL in the pairing link.
 
 ## Managing Access Later
 

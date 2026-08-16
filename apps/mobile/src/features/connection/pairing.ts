@@ -1,4 +1,4 @@
-import { readHostedPairingRequest } from "@t3tools/shared/remote";
+import { resolveRemotePairingTarget } from "@t3tools/shared/remote";
 import * as Schema from "effect/Schema";
 
 const MOBILE_PAIRING_URL_PARAM = "pairingUrl";
@@ -47,24 +47,11 @@ export function parsePairingUrl(url: string): { host: string; code: string } {
   if (!trimmed) return { host: "", code: "" };
 
   try {
-    const parsed = new URL(trimmed);
-    const hostedPairingRequest = readHostedPairingRequest(parsed);
-    if (hostedPairingRequest) {
-      return {
-        host: hostedPairingRequest.host.replace(/\/$/, ""),
-        code: hostedPairingRequest.token,
-      };
-    }
-
-    const hashParams = new URLSearchParams(parsed.hash.slice(1));
-    const hashToken = hashParams.get("token");
-    const queryToken = parsed.searchParams.get("token");
-    const code = hashToken || queryToken || "";
-
-    parsed.hash = "";
-    parsed.search = "";
-    parsed.pathname = "/";
-    return { host: parsed.toString().replace(/\/$/, ""), code };
+    const target = resolveRemotePairingTarget({ pairingUrl: trimmed });
+    return {
+      host: target.httpBaseUrl.replace(/\/$/, ""),
+      code: target.credential,
+    };
   } catch {
     return { host: trimmed, code: "" };
   }
@@ -78,7 +65,7 @@ export function extractPairingUrlFromQrPayload(payload: string): string {
 
   try {
     const url = new URL(trimmed);
-    if (url.protocol === "t3code:") {
+    if (url.protocol === "matrixos:" || url.protocol === "t3code:") {
       const pairingUrl = url.searchParams.get(MOBILE_PAIRING_URL_PARAM)?.trim() ?? "";
       if (pairingUrl.length > 0) {
         return pairingUrl;

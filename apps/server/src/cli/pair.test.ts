@@ -240,8 +240,9 @@ describe("t3 pair", () => {
 
         assert.include(
           output,
-          "Pairing URL: https://app.t3.codes/pair?host=https%3A%2F%2Fexample.com%2Fvm%2Falice%2Fapi%2Fintegrations%2Ft3%2F#token=",
+          "Pairing URL: https://example.com/vm/alice/api/integrations/t3/pair#token=",
         );
+        assert.notInclude(output, "app.t3.codes");
         assert.notInclude(output, "only reachable from this machine");
       }),
     ).pipe(Effect.provide(NodeServices.layer)),
@@ -311,9 +312,8 @@ describe("t3 pair", () => {
       const rendered = String(
         typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
       );
-      assert.include(rendered, "No running T3 Code server found.");
-      assert.include(rendered, "npx t3 serve");
-      assert.include(rendered, "npx t3 connect");
+      assert.include(rendered, "No running Matrix Server found.");
+      assert.include(rendered, "npx matrix-server serve");
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
@@ -342,7 +342,7 @@ describe("t3 pair", () => {
         const rendered = String(
           typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
         );
-        assert.include(rendered, "No running T3 Code server found.");
+        assert.include(rendered, "No running Matrix Server found.");
       }),
     ).pipe(Effect.provide(NodeServices.layer)),
   );
@@ -368,7 +368,7 @@ describe("t3 pair", () => {
       const rendered = String(
         typeof error === "object" && error !== null && "cause" in error ? error.cause : error,
       );
-      assert.include(rendered, "No running T3 Code server found.");
+      assert.include(rendered, "No running Matrix Server found.");
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

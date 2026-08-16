@@ -37,7 +37,7 @@ describe("extractPairingUrlFromQrPayload", () => {
   it("unwraps mobile deep links that carry an encoded pairing url", () => {
     expect(
       extractPairingUrlFromQrPayload(
-        "t3code://pair?pairingUrl=https%3A%2F%2Fremote.example.com%2Fpair%23token%3Dpairing-token",
+        "matrixos://pair?pairingUrl=https%3A%2F%2Fremote.example.com%2Fpair%23token%3Dpairing-token",
       ),
     ).toBe("https://remote.example.com/pair#token=pairing-token");
   });
@@ -58,6 +58,17 @@ describe("parsePairingUrl", () => {
       ),
     ).toEqual({
       host: "https://desktop.tailnet.ts.net",
+      code: "pairing-token",
+    });
+  });
+
+  it("preserves a reverse-proxy base path", () => {
+    expect(
+      parsePairingUrl(
+        "https://app.matrix-os.com/vm/alice/api/integrations/t3/pair#token=pairing-token",
+      ),
+    ).toEqual({
+      host: "https://app.matrix-os.com/vm/alice/api/integrations/t3",
       code: "pairing-token",
     });
   });

@@ -21,6 +21,11 @@ import { fromYaml } from "@t3tools/shared/schemaYaml";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import serverPackageJson from "../package.json" with { type: "json" };
 import {
+  createMatrixServerPublishArgs,
+  MATRIX_SERVER_NPM_PACKAGE,
+  type MatrixServerPublishOptions,
+} from "../src/packageIdentity.ts";
+import {
   ServerCliBuildAssetMissingError,
   ServerCliCommandExitError,
   ServerCliDevelopmentIconSourceMissingError,
@@ -179,31 +184,6 @@ const buildCmd = Command.make(
 // publish subcommand
 // ---------------------------------------------------------------------------
 
-interface PublishCommandConfig {
-  readonly access: string;
-  readonly tag: string;
-  readonly provenance: boolean;
-  readonly dryRun: boolean;
-}
-
-const createVpPmPublishArgs = (config: PublishCommandConfig): ReadonlyArray<string> => {
-  const args = [
-    "publish",
-    "--filter",
-    "t3",
-    "--access",
-    config.access,
-    "--tag",
-    config.tag,
-    "--no-git-checks",
-  ];
-
-  if (config.provenance) args.push("--provenance");
-  if (config.dryRun) args.push("--dry-run");
-
-  return args;
-};
-
 const publishCmd = Command.make(
   "publish",
   {
@@ -242,7 +222,7 @@ const publishCmd = Command.make(
           const workspaceCatalog = workspaceConfig.catalog ?? {};
           const workspaceOverrides = workspaceConfig.overrides ?? {};
           const pkg: PackageJson = {
-            name: serverPackageJson.name,
+            name: MATRIX_SERVER_NPM_PACKAGE,
             repository: serverPackageJson.repository,
             bin: serverPackageJson.bin,
             type: serverPackageJson.type,
@@ -277,8 +257,15 @@ const publishCmd = Command.make(
             }
             yield* Effect.log("[cli] Applied package metadata and publish icon overrides");
 
-            const args = createVpPmPublishArgs(config);
-            const spawnCommand = yield* resolveSpawnCommand("vp", ["pm", ...args]);
+            const args = createMatrixServerPublishArgs(config satisfies MatrixServerPublishOptions);
+            const localVp = path.join(
+              repoRoot,
+              "node_modules",
+              ".bin",
+              process.platform === "win32" ? "vp.cmd" : "vp",
+            );
+            const vpExecutable = (yield* fs.exists(localVp)) ? localVp : "vp";
+            const spawnCommand = yield* resolveSpawnCommand(vpExecutable, ["pm", ...args]);
 
             yield* Effect.log(`[cli] Running: vp pm ${args.join(" ")}`);
             yield* runCommand(
@@ -308,7 +295,7 @@ const publishCmd = Command.make(
 // ---------------------------------------------------------------------------
 
 const cli = Command.make("cli").pipe(
-  Command.withDescription("T3 server build & publish CLI."),
+  Command.withDescription("Matrix Server build & publish CLI."),
   Command.withSubcommands([buildCmd, publishCmd]),
 );
 

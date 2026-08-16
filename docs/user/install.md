@@ -1,26 +1,26 @@
-# Install T3 Code
+# Install Matrix
 
-T3 Code is a web and desktop GUI for running coding agents on your machine.
+Matrix is a web and desktop GUI for running coding agents on a local or cloud computer.
 
 ## Requirements
 
-Node.js `^22.16 || ^23.11 || >=24.10` on the machine that runs the T3 Code server.
+Node.js `^22.16 || ^23.11 || >=24.10` on the machine that runs Matrix Server.
 
 At least one provider CLI, installed and authenticated. See [Providers](#providers) below.
 
 ## Run Without Installing
 
 ```bash
-npx t3@latest
+npx matrix-server@latest serve
 ```
 
-This starts the T3 Code server on your machine and opens the local web app. Use
-`npx t3@latest --help` for the full CLI reference.
+This starts Matrix Server on your machine and opens the local web app. Use
+`npx matrix-server@latest --help` for the full CLI reference after the first public release.
 
 ## Desktop App
 
 Download the latest release from
-[GitHub Releases](https://github.com/pingdotgg/t3code/releases), or install from a package
+[GitHub Releases](https://github.com/HamedMP/t3code/releases), or install from a package
 registry.
 
 Windows:
@@ -51,7 +51,7 @@ yay -S t3code-nightly-bin
 
 ## Providers
 
-T3 Code drives provider CLIs; it does not ship them. Install the CLI for each provider you want
+Matrix drives provider CLIs; it does not ship them. Install the CLI for each provider you want
 to use, then authenticate it.
 
 | Provider   | CLI                                                   | Default binary | Log in with           |

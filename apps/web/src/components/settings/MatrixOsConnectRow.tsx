@@ -25,12 +25,13 @@ export function MatrixOsConnectRow() {
     try {
       await openMatrixOsConnect(api.shell);
     } catch (error) {
-      console.error("Failed to open the Matrix OS setup link.", error);
+      console.error("Failed to open the Matrix Server install guide.", error);
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Unable to open Matrix OS",
-          description: "Open app.matrix-os.com and connect T3 Code from its Terminal.",
+          title: "Unable to open the install guide",
+          description:
+            "Open the Matrix Server guide from this repository and follow its pairing steps.",
         }),
       );
     } finally {
@@ -40,7 +41,7 @@ export function MatrixOsConnectRow() {
 
   return (
     <SettingsRow
-      title="Matrix OS"
+      title="Matrix Server"
       description={MATRIX_OS_SETUP_DESCRIPTION}
       control={
         <Button

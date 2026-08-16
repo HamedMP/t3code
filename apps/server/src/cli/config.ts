@@ -32,7 +32,7 @@ export const hostFlag = Flag.string("host").pipe(
 );
 export const baseDirFlag = Flag.string("base-dir").pipe(
   Flag.withDescription(
-    "Explicit T3 Code data directory; runtime state is stored under userdata (equivalent to T3CODE_HOME).",
+    "Explicit Matrix Server data directory; runtime state is stored under userdata (T3CODE_HOME remains supported for compatibility).",
   ),
   Flag.optional,
 );
@@ -74,10 +74,28 @@ export const tailscaleServePortFlag = Flag.integer("tailscale-serve-port").pipe(
   Flag.withDescription("HTTPS port for Tailscale Serve when --tailscale-serve is enabled."),
   Flag.optional,
 );
+const isLoopbackPairingHostname = (hostname: string): boolean => {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized.startsWith("127.") ||
+    normalized === "::1" ||
+    normalized === "[::1]"
+  );
+};
+
 export const PairingBaseUrl = Schema.URLFromString.pipe(
   Schema.refine((url): url is URL => url.protocol === "http:" || url.protocol === "https:", {
     message: "Expected an HTTP(S) URL",
   }),
+  Schema.refine((url): url is URL => url.username === "" && url.password === "", {
+    message: "Pairing base URL must not contain credentials",
+  }),
+  Schema.refine(
+    (url): url is URL => url.protocol === "https:" || isLoopbackPairingHostname(url.hostname),
+    { message: "Expected HTTPS for a non-loopback pairing base URL" },
+  ),
 );
 
 export const normalizePairingBaseUrl = (value: URL): URL => {
@@ -93,7 +111,7 @@ export const normalizePairingBaseUrl = (value: URL): URL => {
 export const pairingBaseUrlFlag = Flag.string("pairing-base-url").pipe(
   Flag.withSchema(PairingBaseUrl),
   Flag.withDescription(
-    "Public HTTP(S) base URL advertised in the headless pairing link when a trusted reverse proxy fronts this server.",
+    "Public HTTPS base URL advertised in the headless pairing link when a trusted reverse proxy fronts this server (HTTP is allowed only on loopback).",
   ),
   Flag.optional,
 );
@@ -339,8 +357,8 @@ export const resolveServerConfig = (
     const autoBootstrapProjectFromCwd = Option.getOrElse(
       resolveOptionPrecedence(
         Option.fromUndefinedOr(options?.forceAutoBootstrapProjectFromCwd),
-        isHeadlessStartup ? Option.some(false) : Option.none(),
         normalizedFlags.autoBootstrapProjectFromCwd,
+        isHeadlessStartup ? Option.some(false) : Option.none(),
         Option.fromUndefinedOr(env.autoBootstrapProjectFromCwd),
       ),
       () => mode === "web",

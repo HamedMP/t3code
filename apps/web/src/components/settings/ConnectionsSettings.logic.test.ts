@@ -3,8 +3,22 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import {
   applyWslEnableSelection,
   isQrShareableEndpoint,
+  parseRemotePairingUrlFields,
   selectQrEndpointOption,
 } from "./ConnectionsSettings.logic";
+
+describe("parseRemotePairingUrlFields", () => {
+  it("preserves a reverse-proxy base path", () => {
+    expect(
+      parseRemotePairingUrlFields(
+        "https://app.matrix-os.com/vm/alice/api/integrations/t3/pair#token=pairing-token",
+      ),
+    ).toEqual({
+      host: "https://app.matrix-os.com/vm/alice/api/integrations/t3/",
+      pairingCode: "pairing-token",
+    });
+  });
+});
 
 const baseWslState: DesktopWslState = {
   enabled: false,

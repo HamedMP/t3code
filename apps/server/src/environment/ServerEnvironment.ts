@@ -128,7 +128,8 @@ export const make = Effect.gen(function* () {
 
   const environmentId = EnvironmentId.make(environmentIdRaw);
   const cwdBaseName = path.basename(serverConfig.cwd).trim();
-  const label = yield* resolveServerEnvironmentLabel({ cwdBaseName });
+  const machineLabel = yield* resolveServerEnvironmentLabel({ cwdBaseName });
+  const label = `Matrix Server · ${machineLabel}`;
   const launcher = yield* resolveServiceLauncherMode();
   const serverSelfUpdate = resolveServerSelfUpdateCapability({
     desktopManaged: serverConfig.mode === "desktop",
@@ -138,6 +139,7 @@ export const make = Effect.gen(function* () {
   const descriptor: ExecutionEnvironmentDescriptor = {
     environmentId,
     label,
+    distribution: "matrix-server",
     platform: {
       os: platformOs(hostPlatform),
       arch: platformArch(hostArchitecture),

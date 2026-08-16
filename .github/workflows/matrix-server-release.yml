@@ -1,0 +1,82 @@
+name: Matrix Server npm release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "matrix-server version (defaults to apps/server/package.json)"
+        required: false
+        type: string
+      tag:
+        description: "npm distribution tag"
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - nightly
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish matrix-server
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: |
+            args:
+              - --filter=t3...
+              - --filter=@t3tools/web...
+              - --filter=@t3tools/scripts...
+
+      - name: Build Matrix Server and bundled web client
+        env:
+          MATRIX_SERVER_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n "$MATRIX_SERVER_VERSION" ]]; then
+            node scripts/update-release-package-versions.ts "$MATRIX_SERVER_VERSION"
+          fi
+          vp run --filter t3 build
+
+      - name: Smoke-test built CLI
+        run: node apps/server/dist/bin.mjs --help
+
+      - name: Validate public package without publishing
+        shell: bash
+        env:
+          MATRIX_SERVER_VERSION: ${{ inputs.version }}
+          MATRIX_SERVER_TAG: ${{ inputs.tag }}
+        run: |
+          args=(publish --dry-run --tag "$MATRIX_SERVER_TAG" --access public --provenance --verbose)
+          if [[ -n "$MATRIX_SERVER_VERSION" ]]; then
+            args+=(--app-version "$MATRIX_SERVER_VERSION")
+          fi
+          node apps/server/scripts/cli.ts "${args[@]}"
+
+      - name: Publish public npm package
+        shell: bash
+        env:
+          MATRIX_SERVER_VERSION: ${{ inputs.version }}
+          MATRIX_SERVER_TAG: ${{ inputs.tag }}
+        run: |
+          args=(publish --tag "$MATRIX_SERVER_TAG" --access public --provenance --verbose)
+          if [[ -n "$MATRIX_SERVER_VERSION" ]]; then
+            args+=(--app-version "$MATRIX_SERVER_VERSION")
+          fi
+          node apps/server/scripts/cli.ts "${args[@]}"

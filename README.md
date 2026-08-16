@@ -1,19 +1,39 @@
-# T3 Code
+# Matrix
 
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
+Matrix is a cloud-native desktop control surface for coding agents. The desktop app is only the
+client: install `matrix-server` on a Matrix computer, VPS, or any reachable server, pair once, and
+new chats run there by default.
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, and OpenCode. If they're set up on your computer, T3 Code can control them.
+```bash
+npx matrix-server@latest serve --tailscale-serve
+# In a second shell, print the reachable HTTPS pairing link:
+npx matrix-server@latest pair --tailscale
+```
 
-## "Wait, what are you selling me?"
+The command prints a one-time pairing link. Paste it into **Settings → Connections → Matrix
+Server** in the desktop app. No Matrix host-bundle change is required. See the
+[Matrix Server install guide](./docs/user/matrix-server.md) for HTTPS reverse-proxy and background
+service setups.
 
-Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.
+> [!IMPORTANT]
+> `matrix-server` is prepared as a public npm package but is not published yet. Until the first
+> release, use the source-build fallback in the install guide. Do not run an unverified package
+> that later appears under this currently unclaimed name.
 
-We wanted something performant, remote-ready, and truly open. If we ever go the wrong direction, we want you to have everything you need to fork and build the editor that you want.
+## Upstream foundation
+
+This fork is built on T3 Code, an open-source agent harness control surface. Internal T3 protocol
+and storage identifiers are intentionally retained where changing them would break compatibility.
+
+Matrix controls the agent CLIs and repositories on the selected Matrix Server while keeping the UI
+on your desktop. It supports Claude Code, Codex, Cursor, Grok Build, and OpenCode using the
+subscriptions already authenticated on the server computer.
 
 ## Installation
 
 > [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build and OpenCode. Install and authenticate at least one provider before use:
+> Matrix supports Codex, Claude, Cursor, Grok Build and OpenCode. Install and authenticate at
+> least one provider on the Matrix Server computer before use:
 >
 > - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
 > - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
@@ -21,49 +41,23 @@ We wanted something performant, remote-ready, and truly open. If we ever go the 
 > - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
 > - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
 
-### Try it out (install-free)
+### Run the standalone server
 
-The easiest way to test T3 Code is to run the server in your terminal (requires Node.js 22.16+, 23.11+, or 24.10+):
+After the first public npm release, run (requires Node.js 22.16+, 23.11+, or 24.10+):
 
 ```bash
-npx t3@latest
+npx matrix-server@latest serve
 ```
 
-This will launch T3 Code's backend on your machine as well as the local web app to control your agents.
+Until that release, follow the [source-build fallback](./docs/user/matrix-server.md#source-build-fallback-before-the-first-npm-publish).
 
-Tip: Use `npx t3@latest --help` for the full CLI reference.
+Tip: Use `npx matrix-server@latest --help` for the full CLI reference after publishing.
 
 ### Desktop app
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
-
-```bash
-winget install T3Tools.T3Code
-```
-
-#### macOS (Homebrew)
-
-```bash
-brew install --cask t3-code
-```
-
-#### Arch Linux (AUR)
-
-Stable:
-
-```bash
-yay -S t3code-bin
-```
-
-Nightly:
-
-```bash
-yay -S t3code-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
+For this demo branch, build the Matrix desktop app from source with `pnpm build:desktop`. Release
+installers can be published from the existing cross-platform release workflow after repository and
+signing settings are moved to the Matrix fork.
 
 ## Some notes
 
@@ -83,7 +77,7 @@ Full docs live in [docs/](./docs). There's no docs site yet.
 - [Keeping app and server in sync](./docs/user/updating.md)
 - [Source control integrations](./docs/user/source-control.md)
 - Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
-- Linux: [run T3 Code as a background service](./docs/user/background-service.md)
+- Linux: [run the server as a background service](./docs/user/background-service.md)
 
 Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
 
@@ -91,7 +85,7 @@ Building from source? Start at [docs/internals/overview.md](./docs/internals/ove
 
 ### Install `vp`
 
-T3 Code uses Vite+ so you'll need to install the global `vp` command-line tool.
+Matrix inherits Vite+ from upstream, so source development needs the global `vp` command-line tool.
 
 #### macOS / Linux
 
@@ -115,6 +109,6 @@ vp i
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
 
-Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas).
+Have a feature request? Open an issue in the Matrix fork.
 
 Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).

@@ -7,6 +7,7 @@ import {
   buildVersionMismatchDismissalKey,
   dismissVersionMismatch,
   isVersionMismatchDismissed,
+  manualServerUpdateCommand,
   resolveServerConfigVersionMismatch,
   resolveServerSelfUpdateCapability,
   resolveVersionMismatch,
@@ -22,7 +23,7 @@ describe("versionSkew", () => {
     expect(resolveVersionMismatch("9.9.9")).toEqual({
       clientVersion: APP_VERSION,
       serverVersion: "9.9.9",
-      hint: "Version mismatch. Try syncing the client and server to the same T3 Code version.",
+      hint: "Version mismatch. Try syncing the Matrix client and server to the same version.",
     });
   });
 
@@ -74,7 +75,7 @@ describe("versionSkew", () => {
     const mismatch = resolveVersionMismatch("9.9.9");
 
     expect(appendVersionMismatchHint("Socket closed.", mismatch)).toBe(
-      "Socket closed. Hint: Version mismatch. Try syncing the client and server to the same T3 Code version.",
+      "Socket closed. Hint: Version mismatch. Try syncing the Matrix client and server to the same version.",
     );
   });
 
@@ -94,6 +95,10 @@ describe("versionSkew", () => {
       }),
     ).toBe("desktop-managed");
     expect(resolveServerSelfUpdateCapability(null)).toBeNull();
+  });
+
+  it("updates standalone servers from the Matrix npm artifact", () => {
+    expect(manualServerUpdateCommand("0.0.33")).toBe("npx matrix-server@0.0.33");
   });
 
   it("matches version-drift guidance to the advertised update path", () => {

@@ -46,4 +46,19 @@ describe("resolveDpopRequestUrl", () => {
       }),
     ).toBe("https://app.matrix-os.com/vm/alice/api/integrations/t3/oauth/token?code=one-time");
   });
+
+  it("rejects absolute and protocol-relative request targets", () => {
+    const input = {
+      localUrl: new URL("http://127.0.0.1:3773/oauth/token"),
+      pairingBaseUrl: new URL("https://app.matrix-os.com/vm/alice/api/integrations/t3/"),
+    };
+
+    expect(
+      resolveDpopRequestUrl({ ...input, originalUrl: "https://attacker.test/token" }),
+    ).toBeNull();
+    expect(resolveDpopRequestUrl({ ...input, originalUrl: "//attacker.test/token" })).toBeNull();
+    expect(
+      resolveDpopRequestUrl({ ...input, originalUrl: "/https://attacker.test/token" }),
+    ).toBeNull();
+  });
 });

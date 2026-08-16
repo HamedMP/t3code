@@ -48,22 +48,54 @@ const normalizeCommitHash = (value: string): Option.Option<string> => {
 export const resolveUserDataPath = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const fileSystem = yield* FileSystem.FileSystem;
-  const legacyPath = environment.path.join(
+  const matrixPath = environment.path.join(
     environment.appDataDirectory,
-    environment.legacyUserDataDirName,
+    environment.userDataDirName,
   );
-  const legacyPathExists = yield* fileSystem.exists(legacyPath).pipe(
-    Effect.mapError(
-      (cause) =>
-        new DesktopUserDataPathResolutionError({
-          legacyPath,
-          cause,
-        }),
-    ),
-  );
-  return legacyPathExists
-    ? legacyPath
-    : environment.path.join(environment.appDataDirectory, environment.userDataDirName);
+  const matrixPathExists = yield* fileSystem
+    .exists(matrixPath)
+    .pipe(
+      Effect.mapError(
+        (cause) => new DesktopUserDataPathResolutionError({ legacyPath: matrixPath, cause }),
+      ),
+    );
+  if (matrixPathExists) return matrixPath;
+
+  const upstreamUserDataDirName = environment.isDevelopment ? "t3code-dev" : "t3code";
+  const legacyNames = [upstreamUserDataDirName, environment.legacyUserDataDirName];
+  for (const legacyName of legacyNames) {
+    const legacyPath = environment.path.join(environment.appDataDirectory, legacyName);
+    const legacyPathExists = yield* fileSystem.exists(legacyPath).pipe(
+      Effect.mapError(
+        (cause) =>
+          new DesktopUserDataPathResolutionError({
+            legacyPath,
+            cause,
+          }),
+      ),
+    );
+    if (legacyPathExists) {
+      const stagingPath = yield* fileSystem
+        .makeTempDirectory({
+          directory: environment.appDataDirectory,
+          prefix: `.${environment.userDataDirName}-migration-`,
+        })
+        .pipe(
+          Effect.mapError((cause) => new DesktopUserDataPathResolutionError({ legacyPath, cause })),
+        );
+      yield* fileSystem
+        .copy(legacyPath, stagingPath, { overwrite: true, preserveTimestamps: true })
+        .pipe(
+          Effect.flatMap(() => fileSystem.rename(stagingPath, matrixPath)),
+          Effect.mapError((cause) => new DesktopUserDataPathResolutionError({ legacyPath, cause })),
+          Effect.ensuring(
+            fileSystem.remove(stagingPath, { recursive: true, force: true }).pipe(Effect.ignore),
+          ),
+        );
+      return matrixPath;
+    }
+  }
+  return matrixPath;
 }).pipe(Effect.withSpan("desktop.appIdentity.resolveUserDataPath"));
 
 export const make = Effect.gen(function* () {
